@@ -9,8 +9,8 @@ import {View} from "core/view"
 import {Model} from "../../model"
 import {Anchor} from "core/enums"
 import {logger} from "core/logging"
-import {Arrayable, Rect} from "core/types"
-import {map} from "core/util/arrayable"
+import {Arrayable, Rect, NumberArray} from "core/types"
+import {map, subselect} from "core/util/arrayable"
 import {extend} from "core/util/object"
 import {isArray, isTypedArray} from "core/util/types"
 import {SpatialIndex} from "core/util/spatial"
@@ -44,9 +44,27 @@ export abstract class GlyphView extends View {
     return this.glglyph != null
   }
 
-  index: SpatialIndex
+  private _index: SpatialIndex | null = null
+
+  private _data_size: number | null = null
 
   protected _nohit_warned: Set<geometry.Geometry["type"]> = new Set()
+
+  get index(): SpatialIndex {
+    const {_index} = this
+    if (_index != null)
+      return _index
+    else
+      throw new Error(`${this}.index_data() wasn't called`)
+  }
+
+  get data_size(): number {
+    const {_data_size} = this
+    if (_data_size != null)
+      return _data_size
+    else
+      throw new Error(`${this}.set_data() wasn't called`)
+  }
 
   initialize(): void {
     super.initialize()
@@ -115,25 +133,9 @@ export abstract class GlyphView extends View {
   }
 
   log_bounds(): Rect {
-    const bb = bbox.empty()
-
-    const positive_x_bbs = this.index.search(bbox.positive_x())
-    for (const x of positive_x_bbs) {
-      if (x.x0 < bb.x0)
-        bb.x0 = x.x0
-      if (x.x1 > bb.x1)
-        bb.x1 = x.x1
-    }
-
-    const positive_y_bbs = this.index.search(bbox.positive_y())
-    for (const y of positive_y_bbs) {
-      if (y.y0 < bb.y0)
-        bb.y0 = y.y0
-      if (y.y1 > bb.y1)
-        bb.y1 = y.y1
-    }
-
-    return this._bounds(bb)
+    const {x0, x1} = this.index.bounds(bbox.positive_x())
+    const {y0, y1} = this.index.bounds(bbox.positive_y())
+    return this._bounds({x0, y0, x1, y1})
   }
 
   get_anchor_point(anchor: Anchor, i: number, [sx, sy]: [number, number]): {x: number, y: number} | null {
@@ -150,7 +152,7 @@ export abstract class GlyphView extends View {
   abstract scentery(i: number, _sx: number, _sy: number): number
 
   sdist(scale: Scale, pts: Arrayable<number>, spans: Arrayable<number>,
-        pts_location: "center" | "edge" = "edge", dilate: boolean = false): Arrayable<number> {
+        pts_location: "center" | "edge" = "edge", dilate: boolean = false): NumberArray {
     let pt0: Arrayable<number>
     let pt1: Arrayable<number>
 
@@ -219,8 +221,8 @@ export abstract class GlyphView extends View {
 
   protected _hit_rect_against_index(geometry: geometry.RectGeometry): Selection {
     const {sx0, sx1, sy0, sy1} = geometry
-    const [x0, x1] = this.renderer.xscale.r_invert(sx0, sx1)
-    const [y0, y1] = this.renderer.yscale.r_invert(sy0, sy1)
+    const [x0, x1] = this.renderer.scope.x_scale.r_invert(sx0, sx1)
+    const [y0, y1] = this.renderer.scope.y_scale.r_invert(sy0, sy1)
     const indices = this.index.indices({x0, x1, y0, y1})
     return new Selection({indices})
   }
@@ -233,12 +235,22 @@ export abstract class GlyphView extends View {
       for (const k in data) {
         const v = data[k]
         if (k.charAt(0) === '_')
-          data_subset[k] = indices.map((i) => (v as Arrayable)[i])
+          data_subset[k] = subselect(v as Arrayable<unknown>, indices)
         else
           data_subset[k] = v
       }
       data = data_subset
     }
+
+    let data_size = Infinity
+    for (const k in data) {
+      if (k.charAt(0) === '_')
+        data_size = Math.min(data_size, (data[k] as any).length)
+    }
+    if (data_size != Infinity)
+      this._data_size = data_size
+    else
+      this._data_size = 0 // XXX: this only happens in degenerate unit tests
 
     const self = this as any
     extend(self, data)
@@ -259,12 +271,20 @@ export abstract class GlyphView extends View {
         [self._x1, self._y1] = proj.project_xy(self._x1, self._y1)
     }
 
+    function num_array(array: Arrayable<number>): NumberArray {
+      if (array instanceof NumberArray)
+        return array
+      else
+        return new NumberArray(array)
+    }
+
     // if we have any coordinates that are categorical, convert them to
     // synthetic coords here
-    if (this.renderer.plot_view.frame.x_ranges != null) {   // XXXX JUST TEMP FOR TESTS TO PASS
-      const xr = this.renderer.plot_view.frame.x_ranges[this.model.x_range_name]
-      const yr = this.renderer.plot_view.frame.y_ranges[this.model.y_range_name]
+    const xr = this.renderer.scope.x_range
+    const yr = this.renderer.scope.y_range
 
+    // XXX: MultiPolygons is a special case of special cases
+    if (this.model.type != "MultiPolygons") {
       for (let [xname, yname] of this.model._coords) {
         xname = `_${xname}`
         yname = `_${yname}`
@@ -272,20 +292,24 @@ export abstract class GlyphView extends View {
         // TODO (bev) more robust detection of multi-glyph case
         // hand multi glyph case
         if (self._xs != null) {
-          if (xr instanceof FactorRange) {
+          if (xr instanceof FactorRange)
             self[xname] = map(self[xname], (arr: any) => xr.v_synthetic(arr))
-          }
-          if (yr instanceof FactorRange) {
+          else
+            self[xname] = map(self[xname], num_array)
+          if (yr instanceof FactorRange)
             self[yname] = map(self[yname], (arr: any) => yr.v_synthetic(arr))
-          }
+          else
+            self[yname] = map(self[yname], num_array)
         } else {
           // hand standard glyph case
-          if (xr instanceof FactorRange) {
+          if (xr instanceof FactorRange)
             self[xname] = xr.v_synthetic(self[xname])
-          }
-          if (yr instanceof FactorRange) {
+          else
+            self[xname] = num_array(self[xname])
+          if (yr instanceof FactorRange)
             self[yname] = yr.v_synthetic(self[yname])
-          }
+          else
+            self[yname] = num_array(self[yname])
         }
       }
     }
@@ -300,10 +324,17 @@ export abstract class GlyphView extends View {
 
   protected _set_data(_indices: number[] | null): void {}
 
-  protected abstract _index_data(): SpatialIndex
+  protected get _index_size(): number {
+    return this.data_size
+  }
+
+  protected abstract _index_data(index: SpatialIndex): void
 
   index_data(): void {
-    this.index = this._index_data()
+    const index = new SpatialIndex(this._index_size)
+    this._index_data(index)
+    index.finish()
+    this._index = index
   }
 
   mask_data(indices: number[]): number[] {
@@ -334,12 +365,12 @@ export abstract class GlyphView extends View {
         self[syname] = new Array(n)
 
         for (let i = 0; i < n; i++) {
-          const [sx, sy] = this.map_to_screen(self[xname][i], self[yname][i])
+          const [sx, sy] = this.renderer.scope.map_to_screen(self[xname][i], self[yname][i])
           self[sxname][i] = sx
           self[syname][i] = sy
         }
       } else
-        [self[sxname], self[syname]] = this.map_to_screen(self[xname], self[yname])
+        [self[sxname], self[syname]] = this.renderer.scope.map_to_screen(self[xname], self[yname])
     }
 
     this._map_data()
@@ -347,19 +378,12 @@ export abstract class GlyphView extends View {
 
   // This is where specs not included in coords are computed, e.g. radius.
   protected _map_data(): void {}
-
-  map_to_screen(x: Arrayable<number>, y: Arrayable<number>): [Arrayable<number>, Arrayable<number>] {
-    return this.renderer.plot_view.map_to_screen(x, y, this.model.x_range_name, this.model.y_range_name)
-  }
 }
 
 export namespace Glyph {
   export type Attrs = p.AttrsOf<Props>
 
-  export type Props = Model.Props & {
-    x_range_name: p.Property<string>
-    y_range_name: p.Property<string>
-  }
+  export type Props = Model.Props
 
   export type Visuals = visuals.Visuals
 }
@@ -378,11 +402,6 @@ export abstract class Glyph extends Model {
 
   static init_Glyph(): void {
     this.prototype._coords = []
-
-    this.internal({
-      x_range_name: [ p.String, 'default' ],
-      y_range_name: [ p.String, 'default' ],
-    })
   }
 
   static coords(coords: [string, string][]): void {

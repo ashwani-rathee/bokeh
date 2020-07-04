@@ -17,13 +17,7 @@ export class SlopeView extends AnnotationView {
     this.connect(this.model.change, () => this.plot_view.request_render())
   }
 
-  render(): void {
-    if (!this.model.visible)
-      return
-    this._draw_slope()
-  }
-
-  protected _draw_slope(): void {
+  protected _render(): void {
     const gradient = this.model.gradient
     const y_intercept = this.model.y_intercept
     if(gradient == null || y_intercept == null){
@@ -32,11 +26,11 @@ export class SlopeView extends AnnotationView {
 
     const {frame} = this.plot_view
 
-    const xscale = frame.xscales[this.model.x_range_name]
-    const yscale = frame.yscales[this.model.y_range_name]
+    const xscale = this.scope.x_scale
+    const yscale = this.scope.y_scale
 
-    const sy_start = frame._top.value
-    const sy_end = sy_start + frame._height.value
+    const sy_start = frame.bbox.top
+    const sy_end = sy_start + frame.bbox.height
 
     const y_start = yscale.invert(sy_start)
     const y_end = yscale.invert(sy_end)
@@ -66,8 +60,6 @@ export namespace Slope {
   export type Props = Annotation.Props & {
     gradient: p.Property<number | null>
     y_intercept: p.Property<number | null>
-    x_range_name: p.Property<string>
-    y_range_name: p.Property<string>
 
     line_color: p.Property<Color>
     line_width: p.Property<number>
@@ -97,8 +89,6 @@ export class Slope extends Annotation {
     this.define<Slope.Props>({
       gradient:       [ p.Number,       null      ],
       y_intercept:    [ p.Number,       null      ],
-      x_range_name:   [ p.String,       'default' ],
-      y_range_name:   [ p.String,       'default' ],
     })
 
     this.override({

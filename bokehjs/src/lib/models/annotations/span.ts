@@ -4,7 +4,7 @@ import * as mixins from "core/property_mixins"
 import {Line} from "core/visuals"
 import {SpatialUnits, RenderMode, Dimension} from "core/enums"
 import * as p from "core/properties"
-import {CoordinateTransform} from "core/util/bbox"
+import {CoordinateMapper} from "core/util/bbox"
 
 export class SpanView extends AnnotationView {
   model: Span
@@ -15,10 +15,7 @@ export class SpanView extends AnnotationView {
     this.connect(this.model.change, () => this.plot_view.request_paint(this))
   }
 
-  render(): void {
-    if (!this.model.visible)
-      return
-
+  protected _render(): void {
     const {location} = this.model
     if (location == null) {
       return
@@ -26,10 +23,10 @@ export class SpanView extends AnnotationView {
 
     const {frame} = this.plot_view
 
-    const xscale = frame.xscales[this.model.x_range_name]
-    const yscale = frame.yscales[this.model.y_range_name]
+    const xscale = this.scope.x_scale
+    const yscale = this.scope.y_scale
 
-    const _calc_dim = (scale: Scale, view: CoordinateTransform): number => {
+    const _calc_dim = (scale: Scale, view: CoordinateMapper): number => {
       if (this.model.location_units == 'data')
         return scale.compute(location)
       else
@@ -39,14 +36,14 @@ export class SpanView extends AnnotationView {
     let height: number, sleft: number, stop: number, width: number
     if (this.model.dimension == 'width') {
       stop = _calc_dim(yscale, frame.yview)
-      sleft = frame._left.value
-      width = frame._width.value
+      sleft = frame.bbox.left
+      width = frame.bbox.width
       height = this.model.properties.line_width.value()
     } else {
-      stop = frame._top.value
+      stop = frame.bbox.top
       sleft = _calc_dim(xscale, frame.xview)
       width = this.model.properties.line_width.value()
-      height = frame._height.value
+      height = frame.bbox.height
     }
 
     const {ctx} = this.layer
@@ -71,8 +68,6 @@ export namespace Span {
 
   export type Props = Annotation.Props & {
     render_mode: p.Property<RenderMode>
-    x_range_name: p.Property<string>
-    y_range_name: p.Property<string>
     location: p.Property<number | null>
     location_units: p.Property<SpatialUnits>
     dimension: p.Property<Dimension>
@@ -101,8 +96,6 @@ export class Span extends Annotation {
 
     this.define<Span.Props>({
       render_mode:    [ p.RenderMode,   'canvas'  ],
-      x_range_name:   [ p.String,       'default' ],
-      y_range_name:   [ p.String,       'default' ],
       location:       [ p.Number,       null      ],
       location_units: [ p.SpatialUnits, 'data'    ],
       dimension:      [ p.Dimension,    'width'   ],

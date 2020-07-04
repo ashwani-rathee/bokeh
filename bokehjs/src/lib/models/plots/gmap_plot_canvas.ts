@@ -186,8 +186,8 @@ export class GMapPlotView extends PlotView {
 
   protected _get_projected_bounds(): [number, number, number, number] {
     const [xstart, xend, ystart, yend] = this._get_latlon_bounds()
-    const [proj_xstart, proj_ystart] = wgs84_mercator.forward([xstart, ystart])
-    const [proj_xend, proj_yend] = wgs84_mercator.forward([xend, yend])
+    const [proj_xstart, proj_ystart] = wgs84_mercator.compute(xstart, ystart)
+    const [proj_xend, proj_yend] = wgs84_mercator.compute(xend, yend)
     return [proj_xstart, proj_xend, proj_ystart, proj_yend]
   }
 
@@ -249,8 +249,8 @@ export class GMapPlotView extends PlotView {
 
   // this overrides the standard _paint_empty to make the inner canvas transparent
   protected _paint_empty(ctx: Context2d, frame_box: FrameBox): void {
-    const ow = this.layout._width.value
-    const oh = this.layout._height.value
+    const ow = this.layout.bbox.width
+    const oh = this.layout.bbox.height
     const [left, top, iw, ih] = frame_box
 
     ctx.clearRect(0, 0, ow, oh)

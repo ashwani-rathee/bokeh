@@ -31,9 +31,11 @@ export class BandView extends AnnotationView {
 
   connect_signals(): void {
     super.connect_signals()
-    this.connect(this.model.source.streaming, () => this.set_data(this.model.source))
-    this.connect(this.model.source.patching, () => this.set_data(this.model.source))
-    this.connect(this.model.source.change, () => this.set_data(this.model.source))
+    const update = () => this.set_data(this.model.source)
+    this.connect(this.model.change, update)
+    this.connect(this.model.source.streaming, update)
+    this.connect(this.model.source.patching, update)
+    this.connect(this.model.source.change, update)
   }
 
   set_data(source: ColumnarDataSource): void {
@@ -46,8 +48,8 @@ export class BandView extends AnnotationView {
     const {frame} = this.plot_view
     const dim = this.model.dimension
 
-    const xscale = frame.xscales[this.model.x_range_name]
-    const yscale = frame.yscales[this.model.y_range_name]
+    const xscale = this.scope.x_scale
+    const yscale = this.scope.y_scale
 
     const limit_scale = dim == "height" ? yscale : xscale
     const base_scale  = dim == "height" ? xscale : yscale
@@ -85,10 +87,7 @@ export class BandView extends AnnotationView {
     this._upper_sy = _upper[j]
   }
 
-  render(): void {
-    if (!this.model.visible)
-      return
-
+  protected _render(): void {
     this._map_data()
 
     const {ctx} = this.layer
@@ -147,8 +146,6 @@ export namespace Band {
     base: p.DistanceSpec
     dimension: p.Property<Dimension>
     source: p.Property<ColumnarDataSource>
-    x_range_name: p.Property<string>
-    y_range_name: p.Property<string>
   } & Mixins
 
   export type Mixins = mixins.Line/*Scalar*/ & mixins.Fill/*Scalar*/
@@ -177,8 +174,6 @@ export class Band extends Annotation {
       base:         [ p.DistanceSpec                               ],
       dimension:    [ p.Dimension,    'height'                     ],
       source:       [ p.Instance,     () => new ColumnDataSource() ],
-      x_range_name: [ p.String,       'default'                    ],
-      y_range_name: [ p.String,       'default'                    ],
     })
 
     this.override({

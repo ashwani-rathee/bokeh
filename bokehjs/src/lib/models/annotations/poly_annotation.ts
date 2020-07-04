@@ -17,10 +17,7 @@ export class PolyAnnotationView extends AnnotationView {
     this.connect(this.model.data_update, () => this.plot_view.request_render())
   }
 
-  render(): void {
-    if (!this.model.visible)
-      return
-
+  protected _render(): void {
     const {xs, ys} = this.model
 
     if (xs.length != ys.length)
@@ -75,8 +72,6 @@ export namespace PolyAnnotation {
     xs_units: p.Property<SpatialUnits>
     ys: p.Property<number[]>
     ys_units: p.Property<SpatialUnits>
-    x_range_name: p.Property<string>
-    y_range_name: p.Property<string>
     screen: p.Property<boolean>
   } & Mixins
 
@@ -107,8 +102,6 @@ export class PolyAnnotation extends Annotation {
       xs_units:     [ p.SpatialUnits, 'data'    ],
       ys:           [ p.Array,        []        ],
       ys_units:     [ p.SpatialUnits, 'data'    ],
-      x_range_name: [ p.String,       'default' ],
-      y_range_name: [ p.String,       'default' ],
     })
 
     this.internal({

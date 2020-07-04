@@ -1,95 +1,144 @@
 import {isObject, isArray} from "./types"
 import {unreachable} from "./assert"
+import {equals, Equals, Comparator} from "./eq"
 
 export type DataType = "uint8" | "int8" | "uint16" | "int16" | "uint32" | "int32" | "float32" | "float64"
 
 const __ndarray__ = Symbol("__ndarray__")
 
-export class Uint8NDArray extends Uint8Array {
+export class Uint8NDArray extends Uint8Array implements Equals {
   readonly __ndarray__ = __ndarray__
   readonly dtype: "uint8" = "uint8"
   readonly shape: number[]
+  readonly dimension: number
 
   constructor(seq: ArrayLike<number> | ArrayBufferLike, shape?: number[]) {
     super(seq)
-    this.shape = shape ?? [this.length]
+    this.shape = shape ?? (is_NDArray(seq) ? seq.shape : [this.length])
+    this.dimension = this.shape.length
+  }
+
+  [equals](that: this, cmp: Comparator): boolean {
+    return cmp.eq(this.shape, that.shape) && cmp.arrays(this, that)
   }
 }
 
-export class Int8NDArray extends Int8Array {
+export class Int8NDArray extends Int8Array implements Equals {
   readonly __ndarray__ = __ndarray__
   readonly dtype: "int8" = "int8"
   readonly shape: number[]
+  readonly dimension: number
 
   constructor(seq: ArrayLike<number> | ArrayBufferLike, shape?: number[]) {
     super(seq)
     this.shape = shape ?? (is_NDArray(seq) ? seq.shape : [this.length])
+    this.dimension = this.shape.length
+  }
+
+  [equals](that: this, cmp: Comparator): boolean {
+    return cmp.eq(this.shape, that.shape) && cmp.arrays(this, that)
   }
 }
 
-export class Uint16NDArray extends Uint16Array {
+export class Uint16NDArray extends Uint16Array implements Equals {
   readonly __ndarray__ = __ndarray__
   readonly dtype: "uint16" = "uint16"
   readonly shape: number[]
+  readonly dimension: number
 
   constructor(seq: ArrayLike<number> | ArrayBufferLike, shape?: number[]) {
     super(seq)
     this.shape = shape ?? (is_NDArray(seq) ? seq.shape : [this.length])
+    this.dimension = this.shape.length
+  }
+
+  [equals](that: this, cmp: Comparator): boolean {
+    return cmp.eq(this.shape, that.shape) && cmp.arrays(this, that)
   }
 }
 
-export class Int16NDArray extends Int16Array {
+export class Int16NDArray extends Int16Array implements Equals {
   readonly __ndarray__ = __ndarray__
   readonly dtype: "int16" = "int16"
   readonly shape: number[]
+  readonly dimension: number
 
   constructor(seq: ArrayLike<number> | ArrayBufferLike, shape?: number[]) {
     super(seq)
     this.shape = shape ?? (is_NDArray(seq) ? seq.shape : [this.length])
+    this.dimension = this.shape.length
+  }
+
+  [equals](that: this, cmp: Comparator): boolean {
+    return cmp.eq(this.shape, that.shape) && cmp.arrays(this, that)
   }
 }
 
-export class Uint32NDArray extends Uint32Array {
+export class Uint32NDArray extends Uint32Array implements Equals {
   readonly __ndarray__ = __ndarray__
   readonly dtype: "uint32" = "uint32"
   readonly shape: number[]
+  readonly dimension: number
 
   constructor(seq: ArrayLike<number> | ArrayBufferLike, shape?: number[]) {
     super(seq)
     this.shape = shape ?? (is_NDArray(seq) ? seq.shape : [this.length])
+    this.dimension = this.shape.length
+  }
+
+  [equals](that: this, cmp: Comparator): boolean {
+    return cmp.eq(this.shape, that.shape) && cmp.arrays(this, that)
   }
 }
 
-export class Int32NDArray extends Int32Array {
+export class Int32NDArray extends Int32Array implements Equals {
   readonly __ndarray__ = __ndarray__
   readonly dtype: "int32" = "int32"
   readonly shape: number[]
+  readonly dimension: number
 
   constructor(seq: ArrayLike<number> | ArrayBufferLike, shape?: number[]) {
     super(seq)
     this.shape = shape ?? (is_NDArray(seq) ? seq.shape : [this.length])
+    this.dimension = this.shape.length
+  }
+
+  [equals](that: this, cmp: Comparator): boolean {
+    return cmp.eq(this.shape, that.shape) && cmp.arrays(this, that)
   }
 }
 
-export class Float32NDArray extends Float32Array {
+export class Float32NDArray extends Float32Array implements Equals {
   readonly __ndarray__ = __ndarray__
   readonly dtype: "float32" = "float32"
   readonly shape: number[]
+  readonly dimension: number
 
   constructor(seq: ArrayLike<number> | ArrayBufferLike, shape?: number[]) {
     super(seq)
     this.shape = shape ?? (is_NDArray(seq) ? seq.shape : [this.length])
+    this.dimension = this.shape.length
+  }
+
+  [equals](that: this, cmp: Comparator): boolean {
+    return cmp.eq(this.shape, that.shape) && cmp.arrays(this, that)
   }
 }
 
-export class Float64NDArray extends Float64Array {
+export class Float64NDArray extends Float64Array implements Equals {
   readonly __ndarray__ = __ndarray__
   readonly dtype: "float64" = "float64"
   readonly shape: number[]
+  readonly dimension: number
 
   constructor(seq: ArrayLike<number> | ArrayBufferLike, shape?: number[]) {
     super(seq)
     this.shape = shape ?? (is_NDArray(seq) ? seq.shape : [this.length])
+    this.dimension = this.shape.length
+  }
+
+  [equals](that: this, cmp: Comparator): boolean {
+    return cmp.eq(this.shape, that.shape) && cmp.arrays(this, that)
   }
 }
 

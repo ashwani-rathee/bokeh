@@ -3,7 +3,7 @@ import * as hittest from "core/hittest"
 import * as p from "core/properties"
 import {LineVector} from "core/property_mixins"
 import {Line} from "core/visuals"
-import {Arrayable, Rect} from "core/types"
+import {Arrayable, Rect, NumberArray} from "core/types"
 import {SpatialIndex} from "core/util/spatial"
 import {Context2d} from "core/util/canvas"
 import {Glyph, GlyphView, GlyphData} from "./glyph"
@@ -11,15 +11,15 @@ import {generic_line_legend} from "./utils"
 import {Selection} from "../selections/selection"
 
 export interface SegmentData extends GlyphData {
-  _x0: Arrayable<number>
-  _y0: Arrayable<number>
-  _x1: Arrayable<number>
-  _y1: Arrayable<number>
+  _x0: NumberArray
+  _y0: NumberArray
+  _x1: NumberArray
+  _y1: NumberArray
 
-  sx0: Arrayable<number>
-  sy0: Arrayable<number>
-  sx1: Arrayable<number>
-  sy1: Arrayable<number>
+  sx0: NumberArray
+  sy0: NumberArray
+  sx1: NumberArray
+  sy1: NumberArray
 }
 
 export interface SegmentView extends SegmentData {}
@@ -28,27 +28,21 @@ export class SegmentView extends GlyphView {
   model: Segment
   visuals: Segment.Visuals
 
-  protected _index_data(): SpatialIndex {
-    const points = []
+  protected _index_data(index: SpatialIndex): void {
+    const {min, max} = Math
+    const {data_size} = this
 
-    for (let i = 0, end = this._x0.length; i < end; i++) {
+    for (let i = 0; i < data_size; i++) {
       const x0 = this._x0[i]
       const x1 = this._x1[i]
       const y0 = this._y0[i]
       const y1 = this._y1[i]
 
-      if (!isNaN(x0 + x1 + y0 + y1)) {
-        points.push({
-          x0: Math.min(x0, x1),
-          y0: Math.min(y0, y1),
-          x1: Math.max(x0, x1),
-          y1: Math.max(y0, y1),
-          i,
-        })
-      }
+      if (isNaN(x0 + x1 + y0 + y1))
+        index.add_empty()
+      else
+        index.add(min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1))
     }
-
-    return new SpatialIndex(points)
   }
 
   protected _render(ctx: Context2d, indices: number[], {sx0, sy0, sx1, sy1}: SegmentData): void {
@@ -75,9 +69,10 @@ export class SegmentView extends GlyphView {
 
     const [x0, x1] = this.renderer.xscale.r_invert(sx-lw_voffset, sx+lw_voffset)
     const [y0, y1] = this.renderer.yscale.r_invert(sy-lw_voffset, sy+lw_voffset)
-    const candidates = this.index.indices({x0, y0, x1, y1})
 
+    const candidates = this.index.indices({x0, y0, x1, y1})
     const indices = []
+
     for (const i of candidates) {
       const threshold2 = Math.max(2, this.visuals.line.cache_select('line_width', i) / 2)**2
       const p0 = {x: this.sx0[i], y: this.sy0[i]}

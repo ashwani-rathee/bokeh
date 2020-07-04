@@ -1,4 +1,4 @@
-import {expect} from "chai"
+import {expect} from "assertions"
 
 import {Document} from "@bokehjs/document"
 import {Tool} from "@bokehjs/models/tools/tool"
@@ -42,13 +42,13 @@ describe("WheelPanTool", () => {
       // negative factors move in positive x-data direction
       wheel_pan_tool_view._update_ranges(-0.5)
 
-      const hr = plot_view.frame.x_ranges.default
+      const hr = plot_view.frame.x_range
       // should be translated by -factor units
-      expect([hr.start, hr.end]).to.be.deep.equal([0.5, 1.5])
+      expect([hr.start, hr.end]).to.be.equal([0.5, 1.5])
 
-      const vr = plot_view.frame.y_ranges.default
+      const vr = plot_view.frame.y_range
       // should be unchanged from initialized value
-      expect([vr.start, vr.end]).to.be.deep.equal([0, 1])
+      expect([vr.start, vr.end]).to.be.equal([0, 1])
     })
 
     it("should translate y-range in negative direction", async () => {
@@ -60,13 +60,13 @@ describe("WheelPanTool", () => {
       // positive factors move in positive y-data direction
       wheel_pan_tool_view._update_ranges(0.75)
 
-      const hr = plot_view.frame.x_ranges.default
+      const hr = plot_view.frame.x_range
       // should be unchanged from initialized value
-      expect([hr.start, hr.end]).to.be.deep.equal([0, 1])
+      expect([hr.start, hr.end]).to.be.equal([0, 1])
 
-      const vr = plot_view.frame.y_ranges.default
+      const vr = plot_view.frame.y_range
       // should be translated by -factor units
-      expect([vr.start, vr.end]).to.be.deep.equal([0.75, 1.75])
+      expect([vr.start, vr.end]).to.be.equal([0.75, 1.75])
     })
   })
 })

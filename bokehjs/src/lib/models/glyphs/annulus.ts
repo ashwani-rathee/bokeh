@@ -1,5 +1,5 @@
 import {XYGlyph, XYGlyphView, XYGlyphData} from "./xy_glyph"
-import {Arrayable, Rect} from "core/types"
+import {Rect, NumberArray} from "core/types"
 import {PointGeometry} from "core/geometry"
 import {LineVector, FillVector} from "core/property_mixins"
 import {Line, Fill} from "core/visuals"
@@ -9,11 +9,11 @@ import {is_ie} from "core/util/compat"
 import {Selection} from "../selections/selection"
 
 export interface AnnulusData extends XYGlyphData {
-  _inner_radius: Arrayable<number>
-  _outer_radius: Arrayable<number>
+  _inner_radius: NumberArray
+  _outer_radius: NumberArray
 
-  sinner_radius: Arrayable<number>
-  souter_radius: Arrayable<number>
+  sinner_radius: NumberArray
+  souter_radius: NumberArray
 
   max_inner_radius: number
   max_outer_radius: number
@@ -101,8 +101,7 @@ export class AnnulusView extends XYGlyphView {
       ;[y0, y1] = this.renderer.yscale.r_invert(sy0, sy1)
     }
 
-    const hits: [number, number][] = []
-
+    const indices: number[] = []
     for (const i of this.index.indices({x0, x1, y0, y1})) {
       const or2 = this.souter_radius[i]**2
       const ir2 = this.sinner_radius[i]**2
@@ -110,10 +109,10 @@ export class AnnulusView extends XYGlyphView {
       const [sy0, sy1] = this.renderer.yscale.r_compute(y, this._y[i])
       const dist = (sx0 - sx1)**2 + (sy0 - sy1)**2
       if (dist <= or2 && dist >= ir2)
-        hits.push([i, dist])
+        indices.push(i)
     }
 
-    return Selection.from_hits(hits)
+    return new Selection({indices})
   }
 
   draw_legend_for_index(ctx: Context2d, {x0, y0, x1, y1}: Rect, index: number): void {

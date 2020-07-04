@@ -1,7 +1,15 @@
 import {Arrayable, ArrayableNew} from "../types"
+import {isArray} from "./types"
 
 export function is_empty(array: Arrayable): boolean {
   return array.length == 0
+}
+
+export function copy<T>(array: Arrayable<T>): Arrayable<T> {
+  if (isArray<T>(array))
+    return array.slice()
+  else
+    return new (array.constructor as any)(array)
 }
 
 export function splice<T>(array: Arrayable<T>, start: number, k?: number, ...items: T[]): Arrayable<T> {
@@ -65,10 +73,20 @@ export function indexOf<T>(array: Arrayable<T>, item: T): number {
   return -1
 }
 
+export function subselect<T>(array: Arrayable<T>, indices: Arrayable<number>): Arrayable<T> {
+  const n = indices.length
+  const result = new (array.constructor as ArrayableNew)<T>(n)
+  for (let i = 0; i < n; i++) {
+    result[i] = array[indices[i]]
+  }
+  return result
+}
+
+export function map(array: Float64Array, fn: (item: number, i: number, array: Float64Array) => number): Float64Array
 export function map<T, U>(array: T[], fn: (item: T, i: number, array: Arrayable<T>) => U): U[]
 export function map<T, U>(array: Arrayable<T>, fn: (item: T, i: number, array: Arrayable<T>) => U): Arrayable<U>
 
-export function map<T, U>(array: Arrayable<T>, fn: (item: T, i: number, array: Arrayable<T>) => U): Arrayable<U> {
+export function map<T, U>(array: Arrayable<T>, fn: (item: T, i: number, array: any) => U): Arrayable<U> {
   const n = array.length
   const result = new (array.constructor as ArrayableNew)<U>(n)
   for (let i = 0; i < n; i++) {
@@ -122,12 +140,46 @@ export function min(array: Arrayable<number>): number {
 
   for (let i = 0, length = array.length; i < length; i++) {
     value = array[i]
-    if (value < result) {
+    if (!isNaN(value) && value < result) {
       result = value
     }
   }
 
   return result
+}
+
+export function max(array: Arrayable<number>): number {
+  let value: number
+  let result = -Infinity
+
+  for (let i = 0, length = array.length; i < length; i++) {
+    value = array[i]
+    if (!isNaN(value) && value > result) {
+      result = value
+    }
+  }
+
+  return result
+}
+
+export function minmax(array: Arrayable<number>): [number, number] {
+  let value: number
+  let min = +Infinity
+  let max = -Infinity
+
+  for (let i = 0, length = array.length; i < length; i++) {
+    value = array[i]
+    if (!isNaN(value)) {
+      if (value < min) {
+        min = value
+      }
+      if (value > max) {
+        max = value
+      }
+    }
+  }
+
+  return [min, max]
 }
 
 export function min_by<T>(array: Arrayable<T>, key: (item: T) => number): T {
@@ -143,20 +195,6 @@ export function min_by<T>(array: Arrayable<T>, key: (item: T) => number): T {
     if (computed < resultComputed) {
       result = value
       resultComputed = computed
-    }
-  }
-
-  return result
-}
-
-export function max(array: Arrayable<number>): number {
-  let value: number
-  let result = -Infinity
-
-  for (let i = 0, length = array.length; i < length; i++) {
-    value = array[i]
-    if (value > result) {
-      result = value
     }
   }
 

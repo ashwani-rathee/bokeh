@@ -1,8 +1,8 @@
 import {XYGlyph, XYGlyphView, XYGlyphData} from "./xy_glyph"
-import {Arrayable, Rect} from "core/types"
+import {Arrayable, Rect, NumberArray} from "core/types"
 import {Anchor} from "core/enums"
 import * as p from "core/properties"
-import {map, min, max} from "core/util/arrayable"
+import {map, minmax} from "core/util/arrayable"
 import {Context2d} from "core/util/canvas"
 import {SpatialIndex} from "core/util/spatial"
 import {ImageLoader} from "core/util/image"
@@ -10,21 +10,21 @@ import {ImageLoader} from "core/util/image"
 export type CanvasImage = HTMLImageElement
 
 export interface ImageURLData extends XYGlyphData {
-  _url: Arrayable<string>
-  _angle: Arrayable<number>
-  _w: Arrayable<number>
-  _h: Arrayable<number>
+  _url: string[]
+  _angle: NumberArray
+  _w: NumberArray
+  _h: NumberArray
   _bounds_rect: Rect
 
-  sx: Arrayable<number>
-  sy: Arrayable<number>
-  sw: Arrayable<number>
-  sh: Arrayable<number>
+  sx: NumberArray
+  sy: NumberArray
+  sw: NumberArray
+  sh: NumberArray
 
   max_w: number
   max_h: number
 
-  image: Arrayable<CanvasImage | null>
+  image: (CanvasImage | null)[]
 }
 
 export interface ImageURLView extends ImageURLData {}
@@ -40,8 +40,13 @@ export class ImageURLView extends XYGlyphView {
     this.connect(this.model.properties.global_alpha.change, () => this.renderer.request_render())
   }
 
-  protected _index_data(): SpatialIndex {
-    return new SpatialIndex([])
+  protected _index_data(index: SpatialIndex): void {
+    const {data_size} = this
+
+    for (let i = 0; i < data_size; i++) {
+      // TODO: add a proper implementation (same as ImageBase?)
+      index.add_empty()
+    }
   }
 
   protected _set_data(): void {
@@ -89,10 +94,8 @@ export class ImageURLView extends XYGlyphView {
         ys[n + i] = this._y[i] + this._h[i]
     }
 
-    const x0 = min(xs)
-    const x1 = max(xs)
-    const y0 = min(ys)
-    const y1 = max(ys)
+    const [x0, x1] = minmax(xs)
+    const [y0, y1] = minmax(ys)
 
     this._bounds_rect = {x0, x1, y0, y1}
   }
@@ -136,8 +139,8 @@ export class ImageURLView extends XYGlyphView {
     // TODO (bev): take actual border width into account when clipping
     const {frame} = this.renderer.plot_view
     ctx.rect(
-      frame._left.value+1, frame._top.value+1,
-      frame._width.value-2, frame._height.value-2,
+      frame.bbox.left+1, frame.bbox.top+1,
+      frame.bbox.width-2, frame.bbox.height-2,
     )
     ctx.clip()
 

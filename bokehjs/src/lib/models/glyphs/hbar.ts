@@ -1,20 +1,19 @@
 import {Box, BoxView, BoxData} from "./box"
-import {Arrayable} from "core/types"
+import {NumberArray} from "core/types"
 import * as p from "core/properties"
-import {SpatialIndex} from "core/util/spatial"
 
 export interface HBarData extends BoxData {
-  _left: Arrayable<number>
-  _y: Arrayable<number>
-  _height: Arrayable<number>
-  _right: Arrayable<number>
+  _left: NumberArray
+  _y: NumberArray
+  _height: NumberArray
+  _right: NumberArray
 
-  sy: Arrayable<number>
-  sh: Arrayable<number>
-  sleft: Arrayable<number>
-  sright: Arrayable<number>
-  stop: Arrayable<number>
-  sbottom: Arrayable<number>
+  sy: NumberArray
+  sh: NumberArray
+  sleft: NumberArray
+  sright: NumberArray
+  stop: NumberArray
+  sbottom: NumberArray
 
   max_height: number
 }
@@ -33,10 +32,6 @@ export class HBarView extends BoxView {
     return this.sy[i]
   }
 
-  protected _index_data(): SpatialIndex {
-    return this._index_box(this._y.length)
-  }
-
   protected _lrtb(i: number): [number, number, number, number] {
     const l = Math.min(this._left[i], this._right[i])
     const r = Math.max(this._left[i], this._right[i])
@@ -52,8 +47,8 @@ export class HBarView extends BoxView {
     this.sright = this.renderer.xscale.v_compute(this._right)
 
     const n = this.sy.length
-    this.stop = new Float64Array(n)
-    this.sbottom = new Float64Array(n)
+    this.stop = new NumberArray(n)
+    this.sbottom = new NumberArray(n)
     for (let i = 0; i < n; i++) {
       this.stop[i] = this.sy[i] - this.sh[i]/2
       this.sbottom[i] = this.sy[i] + this.sh[i]/2

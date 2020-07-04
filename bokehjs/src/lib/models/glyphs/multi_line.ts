@@ -2,10 +2,10 @@ import {SpatialIndex} from "core/util/spatial"
 import {PointGeometry, SpanGeometry} from "core/geometry"
 import {LineVector} from "core/property_mixins"
 import {Line} from "core/visuals"
-import {Arrayable, Rect} from "core/types"
+import {Arrayable, Rect, NumberArray} from "core/types"
 import * as hittest from "core/hittest"
 import * as p from "core/properties"
-import {min, max} from "core/util/array"
+import {minmax} from "core/util/arrayable"
 import {to_object} from "core/util/object"
 import {Context2d} from "core/util/canvas"
 import {Glyph, GlyphView, GlyphData} from "./glyph"
@@ -13,11 +13,11 @@ import {generic_line_legend, line_interpolation} from "./utils"
 import {Selection} from "../selections/selection"
 
 export interface MultiLineData extends GlyphData {
-  _xs: Arrayable<Arrayable<number>>
-  _ys: Arrayable<Arrayable<number>>
+  _xs: NumberArray[]
+  _ys: NumberArray[]
 
-  sxs: Arrayable<Arrayable<number>>
-  sys: Arrayable<Arrayable<number>>
+  sxs: NumberArray[]
+  sys: NumberArray[]
 }
 
 export interface MultiLineView extends MultiLineData {}
@@ -26,35 +26,27 @@ export class MultiLineView extends GlyphView {
   model: MultiLine
   visuals: MultiLine.Visuals
 
-  protected _index_data(): SpatialIndex {
-    const points = []
-    for (let i = 0, end = this._xs.length; i < end; i++) {
-      if (this._xs[i] == null || this._xs[i].length === 0)
+  protected _index_data(index: SpatialIndex): void {
+    const {data_size} = this
+
+    for (let i = 0; i < data_size; i++) {
+      const xsi = this._xs[i]
+      if (xsi == null || xsi.length == 0) { // XXX: null?, so include in types
+        index.add_empty()
         continue
-
-      const _xsi = this._xs[i]
-      const xs: number[] = []
-      for (let j = 0, n = _xsi.length; j < n; j++) {
-        const x = _xsi[j]
-        if (!isNaN(x))
-          xs.push(x)
       }
 
-      const _ysi = this._ys[i]
-      const ys: number[] = []
-      for (let j = 0, n = _ysi.length; j < n; j++) {
-        const y = _ysi[j]
-        if (!isNaN(y))
-          ys.push(y)
+      const ysi = this._ys[i]
+      if (ysi == null || ysi.length == 0) { // XXX: null?, so include in types
+        index.add_empty()
+        continue
       }
 
-      const [x0, x1] = [min(xs), max(xs)]
-      const [y0, y1] = [min(ys), max(ys)]
+      const [x0, x1] = minmax(xsi)
+      const [y0, y1] = minmax(ysi)
 
-      points.push({x0, y0, x1, y1, i})
+      index.add(x0, y0, x1, y1)
     }
-
-    return new SpatialIndex(points)
   }
 
   protected _render(ctx: Context2d, indices: number[], {sxs, sys}: MultiLineData): void {

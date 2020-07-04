@@ -2,15 +2,15 @@ import {XYGlyph, XYGlyphView, XYGlyphData} from "./xy_glyph"
 import {generic_line_legend} from "./utils"
 import {LineVector} from "core/property_mixins"
 import {Line} from "core/visuals"
-import {Arrayable, Rect} from "core/types"
+import {Rect, NumberArray} from "core/types"
 import * as p from "core/properties"
 import {Context2d} from "core/util/canvas"
 
 export interface RayData extends XYGlyphData {
-  _length: Arrayable<number>
-  _angle: Arrayable<number>
+  _length: NumberArray
+  _angle: NumberArray
 
-  slength: Arrayable<number>
+  slength: NumberArray
 }
 
 export interface RayView extends RayData {}
@@ -28,8 +28,8 @@ export class RayView extends XYGlyphView {
 
   protected _render(ctx: Context2d, indices: number[], {sx, sy, slength, _angle}: RayData): void {
     if (this.visuals.line.doit) {
-      const width = this.renderer.plot_view.frame._width.value
-      const height = this.renderer.plot_view.frame._height.value
+      const width = this.renderer.plot_view.frame.bbox.width
+      const height = this.renderer.plot_view.frame.bbox.height
       const inf_len = 2 * (width + height)
 
       for (let i = 0, end = slength.length; i < end; i++) {

@@ -2,9 +2,9 @@ import Hammer, {Input} from "hammerjs"
 type HammerEvent = typeof Input
 
 import {Signal} from "./signaling"
-import {DOMView} from "./dom_view"
 import {logger} from "./logging"
 import {offset, Keys} from "./dom"
+import * as events from "./bokeh_events"
 import {getDeltaY} from "./util/wheel"
 import {reversed, is_empty} from "./util/array"
 import {isString} from "./util/types"
@@ -12,8 +12,8 @@ import {is_mobile} from "./util/compat"
 import {PlotView} from "../models/plots/plot"
 import {Toolbar} from "../models/tools/toolbar"
 import {ToolView} from "../models/tools/tool"
-import * as events from "./bokeh_events"
 import {ContextMenu} from "./util/menus"
+import {RendererView} from "../models/renderers/renderer"
 
 function is_touch(event: unknown): event is TouchEvent {
   return typeof TouchEvent !== "undefined" && event instanceof TouchEvent
@@ -280,7 +280,7 @@ export class UIEvents implements EventListenerObject {
     }
   }
 
-  protected _hit_test_renderers(sx: number, sy: number): DOMView | null {
+  protected _hit_test_renderers(sx: number, sy: number): RendererView | null {
     const views = this.plot_view.get_renderer_views()
 
     for (const view of reversed(views)) {
@@ -393,12 +393,9 @@ export class UIEvents implements EventListenerObject {
 
   protected _trigger_bokeh_event(e: UIEvent): void {
     const ev = (() => {
-      const xscale = this.plot_view.frame.xscales.default
-      const yscale = this.plot_view.frame.yscales.default
-
       const {sx, sy} = e
-      const x = xscale.invert(sx)
-      const y = yscale.invert(sy)
+      const x = this.plot_view.frame.x_scale.invert(sx)
+      const y = this.plot_view.frame.y_scale.invert(sy)
 
       switch (e.type) {
         case "wheel":

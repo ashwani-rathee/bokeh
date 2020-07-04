@@ -1,11 +1,7 @@
 import {Size, Sizeable, SizeHint, BoxSizing, SizingPolicy} from "./types"
-import {BBox, CoordinateTransform} from "../util/bbox"
+import {BBox, CoordinateMapper} from "../util/bbox"
 
 const {min, max, round} = Math
-
-export interface ComputedVariable {
-  readonly value: number
-}
 
 export type ExtBoxSizing = BoxSizing & {
   readonly size: Partial<Size>
@@ -24,15 +20,6 @@ export abstract class Layoutable {
   get inner_bbox(): BBox {
     return this._inner_bbox
   }
-
-  _top: ComputedVariable
-  _left: ComputedVariable
-  _width: ComputedVariable
-  _height: ComputedVariable
-  _right: ComputedVariable
-  _bottom: ComputedVariable
-  _hcenter: ComputedVariable
-  _vcenter: ComputedVariable
 
   private _sizing: ExtBoxSizing
 
@@ -74,19 +61,6 @@ export abstract class Layoutable {
   }
 
   protected _init(): void {}
-
-  constructor() {
-    const layout = this
-
-    this._top     = { get value(): number { return layout.bbox.top     } }
-    this._left    = { get value(): number { return layout.bbox.left    } }
-    this._width   = { get value(): number { return layout.bbox.width   } }
-    this._height  = { get value(): number { return layout.bbox.height  } }
-    this._right   = { get value(): number { return layout.bbox.right   } }
-    this._bottom  = { get value(): number { return layout.bbox.bottom  } }
-    this._hcenter = { get value(): number { return layout.bbox.hcenter } }
-    this._vcenter = { get value(): number { return layout.bbox.vcenter } }
-  }
 
   protected _set_geometry(outer: BBox, inner: BBox): void {
     this._bbox = outer
@@ -195,11 +169,11 @@ export abstract class Layoutable {
     this.set_geometry(outer, inner)
   }
 
-  get xview(): CoordinateTransform {
+  get xview(): CoordinateMapper {
     return this.bbox.xview
   }
 
-  get yview(): CoordinateTransform {
+  get yview(): CoordinateMapper {
     return this.bbox.yview
   }
 

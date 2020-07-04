@@ -1,4 +1,4 @@
-import {expect} from "chai"
+import {expect} from "assertions"
 
 import {create_glyph_view} from "./glyph_utils"
 import {ImageURL} from "@bokehjs/models/glyphs/image_url"
@@ -35,21 +35,21 @@ describe("ImageURL module", () => {
 
       // TODO await
       const image = image_url_view.image[0]
-      expect(image).to.be.not.null
+      expect(image).to.not.be.null
       expect(image!.src).to.be.equal("image.jpg") // XXX: null
     })
 
     it("`_map_data` should correctly map data if w and h units are 'data'", async () => {
       // ImageURLView._map_data is called by ImageURLView.map_data
       const image_url = new ImageURL()
-      image_url.w = 1
-      image_url.h = 2
+      image_url.w = 17
+      image_url.h = 19
 
       const image_url_view = await create_glyph_view(image_url)
       image_url_view.map_data()
 
-      expect(image_url_view.sw).to.be.deep.equal(Float64Array.of(565))
-      expect(image_url_view.sh).to.be.deep.equal(Float64Array.of(1180))
+      expect(image_url_view.sw).to.be.equal(new Float64Array([34]))
+      expect(image_url_view.sh).to.be.equal(new Float64Array([38]))
     })
 
     it("`_map_data` should correctly map data if w and h units are 'screen'", async () => {
@@ -63,8 +63,8 @@ describe("ImageURL module", () => {
       const image_url_view = await create_glyph_view(image_url)
       image_url_view.map_data()
 
-      expect(image_url_view.sw).to.be.deep.equal([1])
-      expect(image_url_view.sh).to.be.deep.equal([2])
+      expect(image_url_view.sw).to.be.equal(new Float64Array([1]))
+      expect(image_url_view.sh).to.be.equal(new Float64Array([2]))
     })
 
     it("`_map_data` should map data to NaN if w and h are null, 'data' units", async () => {
@@ -76,8 +76,8 @@ describe("ImageURL module", () => {
       const image_url_view = await create_glyph_view(image_url)
       image_url_view.map_data()
 
-      expect(image_url_view.sw).to.be.deep.equal(Float64Array.of(NaN))
-      expect(image_url_view.sh).to.be.deep.equal(Float64Array.of(NaN))
+      expect(image_url_view.sw).to.be.equal(Float64Array.of(NaN))
+      expect(image_url_view.sh).to.be.equal(Float64Array.of(NaN))
     })
 
     it("`_map_data` should map data to NaN if w and h are null, 'screen' units", async () => {
@@ -90,8 +90,8 @@ describe("ImageURL module", () => {
       const image_url_view = await create_glyph_view(image_url)
       image_url_view.map_data()
 
-      expect(image_url_view.sw).to.be.deep.equal([NaN])
-      expect(image_url_view.sh).to.be.deep.equal([NaN])
+      expect(image_url_view.sw).to.be.equal(new Float64Array([NaN]))
+      expect(image_url_view.sh).to.be.equal(new Float64Array([NaN]))
     })
   })
 })

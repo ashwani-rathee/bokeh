@@ -5,7 +5,7 @@ import * as mixins from "core/property_mixins"
 import {Line, Fill} from "core/visuals"
 import {SpatialUnits, RenderMode} from "core/enums"
 import * as p from "core/properties"
-import {BBox, CoordinateTransform} from "core/util/bbox"
+import {BBox, CoordinateMapper} from "core/util/bbox"
 
 export const EDGE_TOLERANCE = 2.5
 
@@ -24,20 +24,17 @@ export class BoxAnnotationView extends AnnotationView {
     this.connect(this.model.data_update, () => this.plot_view.request_paint(this))
   }
 
-  render(): void {
-    if (!this.model.visible)
-      return
-
+  protected _render(): void {
     // don't render if *all* position are null
     if (this.model.left == null && this.model.right == null && this.model.top == null && this.model.bottom == null) {
       return
     }
 
     const {frame} = this.plot_view
-    const xscale = frame.xscales[this.model.x_range_name]
-    const yscale = frame.yscales[this.model.y_range_name]
+    const xscale = this.scope.x_scale
+    const yscale = this.scope.y_scale
 
-    const _calc_dim = (dim: number | null, dim_units: SpatialUnits, scale: Scale, view: CoordinateTransform, frame_extrema: number): number => {
+    const _calc_dim = (dim: number | null, dim_units: SpatialUnits, scale: Scale, view: CoordinateMapper, frame_extrema: number): number => {
       let sdim
       if (dim != null) {
         if (this.model.screen)
@@ -53,10 +50,10 @@ export class BoxAnnotationView extends AnnotationView {
       return sdim
     }
 
-    this.sleft   = _calc_dim(this.model.left,   this.model.left_units,   xscale, frame.xview, frame._left.value)
-    this.sright  = _calc_dim(this.model.right,  this.model.right_units,  xscale, frame.xview, frame._right.value)
-    this.stop    = _calc_dim(this.model.top,    this.model.top_units,    yscale, frame.yview, frame._top.value)
-    this.sbottom = _calc_dim(this.model.bottom, this.model.bottom_units, yscale, frame.yview, frame._bottom.value)
+    this.sleft   = _calc_dim(this.model.left,   this.model.left_units,   xscale, frame.xview, frame.bbox.left)
+    this.sright  = _calc_dim(this.model.right,  this.model.right_units,  xscale, frame.xview, frame.bbox.right)
+    this.stop    = _calc_dim(this.model.top,    this.model.top_units,    yscale, frame.yview, frame.bbox.top)
+    this.sbottom = _calc_dim(this.model.bottom, this.model.bottom_units, yscale, frame.yview, frame.bbox.bottom)
 
     this._paint_box(this.sleft, this.sright, this.sbottom, this.stop)
   }
@@ -114,8 +111,6 @@ export namespace BoxAnnotation {
 
   export type Props = Annotation.Props & {
     render_mode: p.Property<RenderMode>
-    x_range_name: p.Property<string>
-    y_range_name: p.Property<string>
     top: p.Property<number | null>
     top_units: p.Property<SpatialUnits>
     bottom: p.Property<number | null>
@@ -152,8 +147,6 @@ export class BoxAnnotation extends Annotation {
 
     this.define<BoxAnnotation.Props>({
       render_mode:  [ p.RenderMode,   'canvas'  ],
-      x_range_name: [ p.String,       'default' ],
-      y_range_name: [ p.String,       'default' ],
       top:          [ p.Number,       null      ],
       top_units:    [ p.SpatialUnits, 'data'    ],
       bottom:       [ p.Number,       null      ],

@@ -1,18 +1,17 @@
 import {Box, BoxView, BoxData} from "./box"
-import {Arrayable} from "core/types"
-import {SpatialIndex} from "core/util/spatial"
+import {NumberArray} from "core/types"
 import * as p from "core/properties"
 
 export interface QuadData extends BoxData {
-  _right: Arrayable<number>
-  _bottom: Arrayable<number>
-  _left: Arrayable<number>
-  _top: Arrayable<number>
+  _right: NumberArray
+  _bottom: NumberArray
+  _left: NumberArray
+  _top: NumberArray
 
-  sright: Arrayable<number>
-  sbottom: Arrayable<number>
-  sleft: Arrayable<number>
-  stop: Arrayable<number>
+  sright: NumberArray
+  sbottom: NumberArray
+  sleft: NumberArray
+  stop: NumberArray
 }
 
 export interface QuadView extends QuadData {}
@@ -27,10 +26,6 @@ export class QuadView extends BoxView {
 
   scentery(i: number): number {
     return (this.stop[i] + this.sbottom[i])/2
-  }
-
-  protected _index_data(): SpatialIndex {
-    return this._index_box(this._right.length)
   }
 
   protected _lrtb(i: number): [number, number, number, number] {

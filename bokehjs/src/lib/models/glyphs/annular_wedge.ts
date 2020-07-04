@@ -2,7 +2,7 @@ import {XYGlyph, XYGlyphView, XYGlyphData} from "./xy_glyph"
 import {generic_area_legend} from "./utils"
 import {PointGeometry} from "core/geometry"
 import {LineVector, FillVector} from "core/property_mixins"
-import {Arrayable, Rect} from "core/types"
+import {Rect, NumberArray} from "core/types"
 import {Line, Fill} from "core/visuals"
 import * as p from "core/properties"
 import {angle_between} from "core/util/math"
@@ -10,14 +10,14 @@ import {Context2d} from "core/util/canvas"
 import {Selection} from "../selections/selection"
 
 export interface AnnularWedgeData extends XYGlyphData {
-  _inner_radius: Arrayable<number>
-  _outer_radius: Arrayable<number>
-  _start_angle: Arrayable<number>
-  _end_angle: Arrayable<number>
-  _angle: Arrayable<number>
+  _inner_radius: NumberArray
+  _outer_radius: NumberArray
+  _start_angle: NumberArray
+  _end_angle: NumberArray
+  _angle: NumberArray
 
-  sinner_radius: Arrayable<number>
-  souter_radius: Arrayable<number>
+  sinner_radius: NumberArray
+  souter_radius: NumberArray
 
   max_inner_radius: number
   max_outer_radius: number
@@ -40,7 +40,7 @@ export class AnnularWedgeView extends XYGlyphView {
     else
       this.souter_radius = this._outer_radius
 
-    this._angle = new Float32Array(this._start_angle.length)
+    this._angle = new NumberArray(this._start_angle.length)
 
     for (let i = 0, end = this._start_angle.length; i < end; i++) {
       this._angle[i] = this._end_angle[i] - this._start_angle[i]
@@ -105,7 +105,7 @@ export class AnnularWedgeView extends XYGlyphView {
       ;[y0, y1] = this.renderer.yscale.r_invert(sy0, sy1)
     }
 
-    const candidates = []
+    const candidates: number[] = []
 
     for (const i of this.index.indices({x0, x1, y0, y1})) {
       const or2 = this.souter_radius[i]**2
@@ -114,20 +114,20 @@ export class AnnularWedgeView extends XYGlyphView {
       const [sy0, sy1] = this.renderer.yscale.r_compute(y, this._y[i])
       const dist = (sx0-sx1)**2 + (sy0-sy1)**2
       if (dist <= or2 && dist >= ir2)
-        candidates.push([i, dist])
+        candidates.push(i)
     }
 
     const direction = this.model.properties.direction.value()
-    const hits: [number, number][] = []
-    for (const [i, dist] of candidates) {
+    const indices: number[] = []
+    for (const i of candidates) {
       // NOTE: minus the angle because JS uses non-mathy convention for angles
       const angle = Math.atan2(sy-this.sy[i], sx-this.sx[i])
       if (angle_between(-angle, -this._start_angle[i], -this._end_angle[i], direction)) {
-        hits.push([i, dist])
+        indices.push(i)
       }
     }
 
-    return Selection.from_hits(hits)
+    return new Selection({indices})
   }
 
   draw_legend_for_index(ctx: Context2d, bbox: Rect, index: number): void {

@@ -1,6 +1,6 @@
 import {Annotation, AnnotationView} from "./annotation"
-import {TooltipAttachment, Side} from "core/enums"
-import {div, display, undisplay, empty} from "core/dom"
+import {TooltipAttachment} from "core/enums"
+import {div, display, undisplay, empty, remove, classes} from "core/dom"
 import * as p from "core/properties"
 
 import {bk_tooltip, bk_tooltip_custom, bk_tooltip_arrow} from "styles/tooltips"
@@ -8,57 +8,47 @@ import {bk_left, bk_right, bk_above, bk_below} from "styles/mixins"
 
 import tooltips_css from "styles/tooltips.css"
 
-export function compute_side(attachment: TooltipAttachment, sx: number, sy: number, hcenter: number, vcenter: number): Side {
-  switch (attachment) {
-    case "horizontal":
-      return sx < hcenter ? "right" : "left"
-    case "vertical":
-      return sy < vcenter ? "below" : "above"
-    default:
-      return attachment
-  }
-}
-
 export class TooltipView extends AnnotationView {
   model: Tooltip
+
+  protected el: HTMLElement
 
   initialize(): void {
     super.initialize()
     // TODO (bev) really probably need multiple divs
-    this.plot_view.canvas_view.add_overlay(this.el)
+    this.el = div({class: bk_tooltip})
     undisplay(this.el)
+    this.plot_view.canvas_view.add_overlay(this.el)
+  }
+
+  remove(): void {
+    remove(this.el)
+    super.remove()
   }
 
   connect_signals(): void {
     super.connect_signals()
-    this.connect(this.model.properties.data.change, () => this._draw_tips())
+    this.connect(this.model.properties.data.change, () => this.render())
   }
 
   styles(): string[] {
     return [...super.styles(), tooltips_css]
   }
 
-  css_classes(): string[] {
-    return super.css_classes().concat(bk_tooltip)
-  }
-
   render(): void {
     if (!this.model.visible)
-      return
+      undisplay(this.el)
 
-    this._draw_tips()
+    super.render()
   }
 
-  protected _draw_tips(): void {
-    const {data} = this.model
+  protected _render(): void {
     empty(this.el)
     undisplay(this.el)
 
-    if (this.model.custom)
-      this.el.classList.add(bk_tooltip_custom)
-    else
-      this.el.classList.remove(bk_tooltip_custom)
+    classes(this.el).toggle(bk_tooltip_custom, this.model.custom)
 
+    const {data} = this.model
     if (data.length == 0)
       return
 
@@ -74,7 +64,17 @@ export class TooltipView extends AnnotationView {
 
     const [sx, sy] = data[data.length - 1] // XXX: this previously depended on {sx, sy} leaking from the for-loop
 
-    const side = compute_side(this.model.attachment, sx, sy, frame._hcenter.value, frame._vcenter.value)
+    const side = (() => {
+      const {attachment} = this.model
+      switch (attachment) {
+        case "horizontal":
+          return sx < frame.bbox.hcenter ? "right" : "left"
+        case "vertical":
+          return sy < frame.bbox.vcenter ? "below" : "above"
+        default:
+          return attachment
+      }
+    })()
 
     this.el.classList.remove(bk_right)
     this.el.classList.remove(bk_left)

@@ -52,7 +52,7 @@ describe("Bug", () => {
   })
 
   describe("in issue #9703", () => {
-    it("disallows ImageURL glyph to set anchor and angle at the same time", async () => {
+    it.allowing(6)("disallows ImageURL glyph to set anchor and angle at the same time", async () => {
       const p = fig([300, 300], {x_range: [-1, 10], y_range: [-1, 10]})
 
       const svg = `\
@@ -206,6 +206,22 @@ describe("Bug", () => {
       p.yaxis.forEach((axis: CategoricalAxis) => axis.subgroup_label_orientation = 0)
 
       await display(p, [200, 300])
+    })
+  })
+
+  describe("in issue #10219", () => {
+    it("disallows correct placement of Rect glyph with partial categorical ranges", async () => {
+      const source = new ColumnDataSource({data: {
+        x: ["A", "A", "A", "B", "B", "B", "C", "C", "C"],
+        y: ["A", "B", "C", "A", "B", "C", "A", "B", "C"],
+      }})
+
+      const p = fig([300, 300], {x_range: ["B", "C"], y_range: ["C", "B"]})
+
+      p.rect({x: {field: "x"}, y: {field: "y"}, width: 0.9, height: 0.9, source})
+      p.circle({x: {field: "x"}, y: {field: "y"}, radius: 0.2, color: "red", source})
+
+      await display(p, [350, 350])
     })
   })
 })

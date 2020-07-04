@@ -4,7 +4,7 @@ import {PointGeometry, RectGeometry, SpanGeometry} from "core/geometry"
 import * as hittest from "core/hittest"
 import * as p from "core/properties"
 import {LineVector, FillVector} from "core/property_mixins"
-import {Arrayable, Rect} from "core/types"
+import {Rect, NumberArray} from "core/types"
 import {Context2d} from "core/util/canvas"
 import {SpatialIndex} from "core/util/spatial"
 import {Line, Fill} from "core/visuals"
@@ -14,16 +14,16 @@ import {generic_area_legend} from "./utils"
 import {Selection} from "../selections/selection"
 
 export interface HexTileData extends GlyphData {
-  _q: Arrayable<number>
-  _r: Arrayable<number>
+  _q: NumberArray
+  _r: NumberArray
 
-  _x: Arrayable<number>
-  _y: Arrayable<number>
+  _x: NumberArray
+  _y: NumberArray
 
-  _scale: Arrayable<number>
+  _scale: NumberArray
 
-  sx: Arrayable<number>
-  sy: Arrayable<number>
+  sx: NumberArray
+  sy: NumberArray
 
   svx: number[]
   svy: number[]
@@ -47,8 +47,8 @@ export class HexTileView extends GlyphView {
     const size = this.model.size
     const aspect_scale = this.model.aspect_scale
 
-    this._x = new Float64Array(n)
-    this._y = new Float64Array(n)
+    this._x = new NumberArray(n)
+    this._y = new NumberArray(n)
 
     if (this.model.orientation == "pointytop") {
       for (let i = 0; i < n; i++) {
@@ -63,7 +63,7 @@ export class HexTileView extends GlyphView {
     }
   }
 
-  protected _index_data(): SpatialIndex {
+  protected _index_data(index: SpatialIndex): void {
     let ysize = this.model.size
     let xsize = Math.sqrt(3)*ysize/2
 
@@ -73,21 +73,23 @@ export class HexTileView extends GlyphView {
     } else
       xsize /= this.model.aspect_scale
 
-    const points = []
-    for (let i = 0; i < this._x.length; i++) {
+    const {data_size} = this
+
+    for (let i = 0; i < data_size; i++) {
       const x = this._x[i]
       const y = this._y[i]
-      if (isNaN(x+y) || !isFinite(x+y))
-        continue
-      points.push({x0: x-xsize, y0: y-ysize, x1: x+xsize, y1: y+ysize, i})
+
+      if (isNaN(x + y) || !isFinite(x + y))
+        index.add_empty()
+      else
+        index.add(x - xsize, y - ysize, x + xsize, y + ysize)
     }
-    return new SpatialIndex(points)
   }
 
   // overriding map_data instead of _map_data because the default automatic mappings
   // for other glyphs (with cartesian coordinates) is not useful
   map_data(): void {
-    [this.sx, this.sy] = this.map_to_screen(this._x, this._y)
+    [this.sx, this.sy] = this.renderer.scope.map_to_screen(this._x, this._y)
     ;[this.svx, this.svy] = this._get_unscaled_vertices()
   }
 
@@ -154,8 +156,8 @@ export class HexTileView extends GlyphView {
     const y = this.renderer.yscale.invert(sy)
 
     const candidates = this.index.indices({x0: x, y0: y, x1: x, y1: y})
-
     const indices = []
+
     for (const i of candidates) {
       if (hittest.point_in_poly(sx-this.sx[i], sy-this.sy[i], this.svx, this.svy)) {
         indices.push(i)

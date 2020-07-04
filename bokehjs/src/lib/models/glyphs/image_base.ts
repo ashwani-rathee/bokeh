@@ -1,5 +1,5 @@
 import {XYGlyph, XYGlyphView, XYGlyphData} from "./xy_glyph"
-import {Arrayable} from "core/types"
+import {Arrayable, NumberArray} from "core/types"
 import * as p from "core/properties"
 import {Context2d} from "core/util/canvas"
 import {Selection, ImageIndex} from "../selections/selection"
@@ -7,16 +7,17 @@ import {PointGeometry} from "core/geometry"
 import {SpatialIndex} from "core/util/spatial"
 import {concat} from "core/util/array"
 import {NDArray, is_NDArray} from "core/util/ndarray"
+import {assert} from "core/util/assert"
 
 export interface ImageDataBase extends XYGlyphData {
   image_data: HTMLCanvasElement[]
 
   _image: (NDArray | number[][])[]
-  _dw: Arrayable<number>
-  _dh: Arrayable<number>
+  _dw: NumberArray
+  _dh: NumberArray
 
-  sw: Arrayable<number>
-  sh: Arrayable<number>
+  sw: NumberArray
+  sh: NumberArray
 }
 
 export interface ImageBaseView extends ImageDataBase {}
@@ -25,8 +26,8 @@ export abstract class ImageBaseView extends XYGlyphView {
   model: ImageBase
   visuals: ImageBase.Visuals
 
-  protected _width: Arrayable<number>
-  protected _height: Arrayable<number>
+  protected _width: NumberArray
+  protected _height: NumberArray
 
   connect_signals(): void {
     super.connect_signals()
@@ -69,6 +70,7 @@ export abstract class ImageBaseView extends XYGlyphView {
       const img = this._image[i]
       let flat_img: Arrayable<number>
       if (is_NDArray(img)) {
+        assert(img.dimension == 2, "expected a 2D array")
         flat_img = img
         this._height[i] = img.shape[0]
         this._width[i] = img.shape[1]
@@ -83,16 +85,16 @@ export abstract class ImageBaseView extends XYGlyphView {
     }
   }
 
-  _index_data(): SpatialIndex {
-    const points = []
-    for (let i = 0, end = this._x.length; i < end; i++) {
+  protected _index_data(index: SpatialIndex): void {
+    const {data_size} = this
+
+    for (let i = 0; i < data_size; i++) {
       const [l, r, t, b] = this._lrtb(i)
-      if (isNaN(l + r + t + b) || !isFinite(l + r + t + b)) {
-        continue
-      }
-      points.push({x0: l, y0: b, x1: r, y1: t, i})
+      if (isNaN(l + r + t + b) || !isFinite(l + r + t + b))
+        index.add_empty()
+      else
+        index.add(l, b, r, t)
     }
-    return new SpatialIndex(points)
   }
 
   _lrtb(i: number): [number, number, number, number]{
@@ -114,10 +116,10 @@ export abstract class ImageBaseView extends XYGlyphView {
       this.image_data = new Array(this._image.length)
 
     if (this._width == null || this._width.length != this._image.length)
-      this._width = new Array(this._image.length)
+      this._width = new NumberArray(this._image.length)
 
     if (this._height == null || this._height.length != this._image.length)
-      this._height = new Array(this._image.length)
+      this._height = new NumberArray(this._image.length)
   }
 
   protected _get_or_create_canvas(i: number): HTMLCanvasElement {
@@ -185,6 +187,7 @@ export abstract class ImageBaseView extends XYGlyphView {
     const {sx, sy} = geometry
     const x = this.renderer.xscale.invert(sx)
     const y = this.renderer.yscale.invert(sy)
+
     const candidates = this.index.indices({x0: x, x1: x, y0: y, y1: y})
     const result = new Selection()
 
@@ -202,7 +205,7 @@ export namespace ImageBase {
   export type Attrs = p.AttrsOf<Props>
 
   export type Props = XYGlyph.Props & {
-    image: p.NumberSpec
+    image: p.NDArraySpec
     dw: p.DistanceSpec
     dh: p.DistanceSpec
     global_alpha: p.Property<number>
@@ -224,7 +227,7 @@ export abstract class ImageBase extends XYGlyph {
 
   static init_ImageBase(): void {
     this.define<ImageBase.Props>({
-      image:        [ p.NumberSpec       ], // TODO (bev) array spec?
+      image:        [ p.NDArraySpec      ],
       dw:           [ p.DistanceSpec     ],
       dh:           [ p.DistanceSpec     ],
       dilate:       [ p.Boolean,   false ],

@@ -1,7 +1,7 @@
 //import {logger} from "./logging"
 import {View} from "./view"
 import {Class} from "./class"
-import {Attrs, PlainObject} from "./types"
+import {Arrayable, Attrs, PlainObject} from "./types"
 import {Signal0, Signal, Signalable, ISignalable} from "./signaling"
 import {Struct, Ref, is_ref} from "./util/refs"
 import * as p from "./properties"
@@ -10,12 +10,14 @@ import {Property} from "./properties"
 import {uniqueId} from "./util/string"
 import {max, copy} from "./util/array"
 import {entries, clone, extend, isEmpty} from "./util/object"
-import {isPlainObject, isObject, isArray, isString, isFunction} from "./util/types"
+import {isPlainObject, isObject, isArray, isTypedArray, isString, isFunction} from "./util/types"
 import {isEqual} from './util/eq'
 import {ColumnarDataSource} from "models/sources/columnar_data_source"
 import {Document, DocumentEvent, DocumentEventBatch, ModelChangedEvent} from "../document"
 import {is_NDArray} from "./util/ndarray"
 import {encode_NDArray} from "./util/serialization"
+import {equals, Equals, Comparator} from "./util/eq"
+import {pretty, Printable, Printer} from "./util/pretty"
 
 export module HasProps {
   export type Attrs = p.AttrsOf<Props>
@@ -46,7 +48,7 @@ export interface HasProps extends HasProps.Attrs, ISignalable {
 
 export type PropertyGenerator = Generator<Property, void>
 
-export abstract class HasProps extends Signalable() {
+export abstract class HasProps extends Signalable() implements Equals, Printable {
   __view_type__: View
 
   // XXX: setter is only required for backwards compatibility
@@ -65,6 +67,10 @@ export abstract class HasProps extends Signalable() {
   static get __qualified__(): string {
     const {__module__, __name__} = this
     return __module__ != null ? `${__module__}.${__name__}` : __name__
+  }
+
+  get [Symbol.toStringTag](): string {
+    return this.constructor.__name__
   }
 
   static init_HasProps(): void {
@@ -244,6 +250,30 @@ export abstract class HasProps extends Signalable() {
       attrs[prop.attr] = prop.get_value()
     }
     return attrs
+  }
+
+  [equals](that: this, cmp: Comparator): boolean {
+    for (const p0 of this) {
+      const p1 = that.property(p0.attr)
+      if (cmp.eq(p0.get_value(), p1.get_value()))
+        return false
+    }
+    return true
+  }
+
+  [pretty](printer: Printer): string {
+    const T = printer.token
+
+    const items = []
+    for (const prop of this) {
+      if (prop.dirty) {
+        const value = prop.get_value()
+        items.push(`${prop.attr}${T(":")} ${printer.to_string(value)}`)
+      }
+    }
+
+    const cls = this.constructor.__qualified__
+    return `${cls}${T("(")}${T("{")}${items.join(`${T(",")} `)}${T("}")}${T(")")}`
   }
 
   constructor(attrs: Attrs | Map<string, unknown> = {}) {
@@ -435,11 +465,12 @@ export abstract class HasProps extends Signalable() {
       return value.ref()
     else if (is_NDArray(value))
       return encode_NDArray(value)
-    else if (isArray(value)) {
-      const ref_array: unknown[] = []
-      for (let i = 0; i < value.length; i++) {
+    else if (isArray(value) || isTypedArray(value)) {
+      const n = value.length
+      const ref_array: unknown[] = new Array(n)
+      for (let i = 0; i < n; i++) {
         const v = value[i]
-        ref_array.push(HasProps._value_to_json(v))
+        ref_array[i] = HasProps._value_to_json(v)
       }
       return ref_array
     } else if (isPlainObject(value)) {
@@ -467,7 +498,7 @@ export abstract class HasProps extends Signalable() {
 
   // this is like _value_record_references but expects to find refs
   // instead of models, and takes a doc to look up the refs in
-  static _json_record_references(doc: Document, v: any, refs: Set<HasProps>, options: {recursive: boolean}): void {
+  static _json_record_references(doc: Document, v: unknown, refs: Set<HasProps>, options: {recursive: boolean}): void {
     const {recursive} = options
     if (is_ref(v)) {
       const model = doc.get_model_by_id(v.id)
@@ -516,13 +547,13 @@ export abstract class HasProps extends Signalable() {
 
   // Get models that are immediately referenced by our properties
   // (do not recurse, do not include ourselves)
-  protected _immediate_references(): HasProps[] {
+  protected _immediate_references(): Set<HasProps> {
     const refs = new Set<HasProps>()
     for (const prop of this.syncable_properties()) {
       const value = prop.get_value()
       HasProps._value_record_references(value, refs, {recursive: false})
     }
-    return [...refs.values()]
+    return refs
   }
 
   references(): Set<HasProps> {
@@ -592,9 +623,9 @@ export abstract class HasProps extends Signalable() {
     }
   }
 
-  materialize_dataspecs(source: ColumnarDataSource): {[key: string]: unknown[] | number} {
+  materialize_dataspecs(source: ColumnarDataSource): {[key: string]: Arrayable<unknown> | number} {
     // Note: this should be moved to a function separate from HasProps
-    const data: {[key: string]: unknown[] | number} = {}
+    const data: {[key: string]: Arrayable<unknown> | number} = {}
     for (const prop of this) {
       if (!(prop instanceof p.VectorSpec))
         continue
@@ -607,7 +638,7 @@ export abstract class HasProps extends Signalable() {
 
       data[`_${name}`] = array
       if (prop instanceof p.DistanceSpec)
-        data[`max_${name}`] = max(array)
+        data[`max_${name}`] = max(array as Arrayable<number>)
     }
     return data
   }
